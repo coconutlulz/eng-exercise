@@ -34,7 +34,7 @@ Please include:
 - if you chose to use a database, include instructions on how to set that up
 - if you have tests, include instructions on how to run them
 - a description of what enhancements you might make if you had more time.
-- Know issues may have
+- Know issues *if any*
 
 **Additional Info**
 
