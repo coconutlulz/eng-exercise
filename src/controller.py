@@ -3,18 +3,26 @@ import logging
 from email_validator import validate_email, EmailNotValidError
 from passlib.context import CryptContext
 
+from models import User, Session
+
 pwd_context = CryptContext(schemes=("argon2",))
 
 
 async def process_password(username, password):
     pwd_context.hash(password, user=username)
 
+
 async def check_password(username, password, hash_string):
     pwd_context.verify(password, hash_string, user=username)
 
 
 async def login_user(username, password):
-    pass
+    # Check for session
+    user = User(username=username, pk=1)
+    session = Session(user=user, pk=2)
+    print(user)
+    print(session)
+    return user, session
 
 
 async def register_account(username, email, password):

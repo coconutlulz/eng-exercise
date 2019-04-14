@@ -1,34 +1,25 @@
-from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute
-)
-from pynamodb.indexes import GlobalSecondaryIndex, KeysOnlyProjection
-from pynamodb.models import Model
+from astra import models
+
+db = None
 
 
-class UserViewIndex(GlobalSecondaryIndex):
-    class Meta:
-        index_name = 'username'
-        projection = KeysOnlyProjection()
-    username = UnicodeAttribute(hash_key=True)
+def initialise(redis):
+    global db
+    db = redis
 
 
-class User(Model):
-    user_id = NumberAttribute(hash_key=True)
-    username = UnicodeAttribute()
-    email = UnicodeAttribute()
-    password = UnicodeAttribute()
+class User(models.Model):
+    def get_db(self):
+        return db
 
-    view_index = UserViewIndex()
-
-
-class SessionViewIndex(GlobalSecondaryIndex):
-    class Meta:
-        index_name = 'session_id'
-        projection = KeysOnlyProjection()
-    session_id = UnicodeAttribute(hash_key=True)
+    user_id = models.IntegerField()
+    name = models.CharHash()
+    email = models.CharHash()
 
 
-class SessionMapping(Model):
-    user_id = NumberAttribute(hash_key=True)
-    session_id = UnicodeAttribute()
+class Session(models.Model):
+    def get_db(self):
+        return db
 
+    session_id = models.IntegerField()
+    user = models.ForeignKey(to=User)

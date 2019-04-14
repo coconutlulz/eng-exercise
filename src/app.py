@@ -1,16 +1,28 @@
-from sanic import Sanic
-from sanic.response import json
+import asyncio
+import uuid
 
-from . import config
-from .controller import login_user, register_account
+import aioredis
 
-app = Sanic()
+from sanic import Sanic, response
+from sanic.exceptions import Unauthorized
+
+import config
+import models
+from controller import login_user, register_account
+
+app = Sanic(__name__)
 
 # GET - get
 # POST - create
 # PUT - replace or create
 # PATCH - update
 # DELETE
+
+
+@app.listener("before_server_start")
+async def server_init(app, _):
+    app.redis = await aioredis.create_redis("redis://127.0.0.1", encoding="utf-8")
+    models.initialise(app.redis)
 
 
 @app.route("/")
@@ -28,9 +40,13 @@ async def register(request):
     )
 
 
-@app.route("/login", methods=["POST"])
+@app.route("/login", methods=["POST", "PUT"])
 async def login(request):
-    await login_user(request.username, request.password)
+    return response.json(
+        body={
+            "response": await login_user(request.json["username"], request.json["password"])
+        }
+    )
 
 
 if __name__ == "__main__":
