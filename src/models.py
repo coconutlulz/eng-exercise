@@ -8,18 +8,9 @@ def initialise(redis):
     db = redis
 
 
-class User(models.Model):
-    def get_db(self):
-        return db
-
-    user_id = models.IntegerField()
-    name = models.CharHash()
-    email = models.CharHash()
-
-
-class Session(models.Model):
-    def get_db(self):
-        return db
-
-    session_id = models.IntegerField()
-    user = models.ForeignKey(to=User)
+class Prefixes:
+    user_id = "uid"
+    username = "u"
+    email = "e"
+    password = "p"
+    session_id = "sid"

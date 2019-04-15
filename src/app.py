@@ -7,8 +7,8 @@ from sanic import Sanic, response
 from sanic.exceptions import Unauthorized
 
 import config
+import controller
 import models
-from controller import login_user, register_account
 
 app = Sanic(__name__)
 
@@ -22,29 +22,27 @@ app = Sanic(__name__)
 @app.listener("before_server_start")
 async def server_init(app, _):
     app.redis = await aioredis.create_redis("redis://127.0.0.1", encoding="utf-8")
-    models.initialise(app.redis)
-
-
-@app.route("/")
-async def test(request):
-    return json({
-        "hello": "world"
-    })
+    controller.db = app.redis
 
 
 @app.route("/register", methods=["POST"])
 async def register(request):
-    await register_account(request.username, request.email, request.password)
-    return json(
-        {"msg": "Registered."}
+    return response.json(
+        body={
+            "msg": await controller.register_account(
+                request.json["username"],
+                request.json["email"],
+                request.json["password"]
+            )
+        }
     )
 
 
-@app.route("/login", methods=["POST", "PUT"])
+@app.route("/login", methods=["PUT"])
 async def login(request):
     return response.json(
         body={
-            "response": await login_user(request.json["username"], request.json["password"])
+            "msg": await controller.login_user(request.json["username"], request.json["password"])
         }
     )
 
