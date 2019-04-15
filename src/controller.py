@@ -3,7 +3,7 @@ import uuid
 
 from email_validator import validate_email, EmailNotValidError
 from passlib.context import CryptContext
-from sanic.exceptions import NotFound
+from sanic.exceptions import NotFound, Unauthorized
 
 from models import Prefixes
 
@@ -30,13 +30,15 @@ async def find_user(username, user_id=None):
 
 
 async def process_password(password):
-    return pwd_context.hash(password)
+    return pwd_context.hash(bytes(password, encoding="utf-8"))
 
 
 async def check_password(user_id, password):
     hash_string = await db.get("{}:{}".format(user_id, Prefixes.password))
-    x = pwd_context.verify(password, hash_string)
-    return
+    return pwd_context.verify(
+        bytes(password, encoding="utf-8"),
+        bytes(hash_string, encoding="utf-8")
+    )
 
 
 async def login_user(username, password):
@@ -45,6 +47,8 @@ async def login_user(username, password):
         raise NotFound()
 
     password = await check_password(user_id, password)
+    if not password:
+        raise Unauthorized("Invalid password.")
 
     session_id = uuid.uuid5(
         uuid.UUID(version=4, hex=user_id),
@@ -64,13 +68,13 @@ async def register_account(username, email, password):
         return True
 
     try:
-        validate_email(email)
+        validate_email(email, check_deliverability=False)
     except EmailNotValidError as e:
         raise e
 
     return await new_user(
         username=username,
         email=email,
-        password=await process_password(password)
+        password=password
     )
 
