@@ -27,13 +27,14 @@ async def server_init(app, _):
 
 @app.route("/register", methods=["POST"])
 async def register(request):
+    user_id = await controller.register_account(
+        request.json["username"],
+        request.json["email"],
+        request.json["password"]
+    )
     return response.json(
         body={
-            "msg": await controller.register_account(
-                request.json["username"],
-                request.json["email"],
-                request.json["password"]
-            )
+            "user_id": user_id
         }
     )
 
@@ -43,6 +44,15 @@ async def login(request):
     return response.json(
         body={
             "msg": await controller.login_user(request.json["username"], request.json["password"])
+        }
+    )
+
+
+@app.route("/delete", methods=["DELETE"])
+async def delete(request):
+    return response.json(
+        body={
+            "msg": await controller.delete_user(request)
         }
     )
 
