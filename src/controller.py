@@ -4,7 +4,7 @@ import uuid
 
 from email_validator import validate_email
 from passlib.context import CryptContext
-from sanic.exceptions import Forbidden, Unauthorized
+from sanic.exceptions import InvalidUsage, Forbidden, Unauthorized
 
 from models import Prefixes, RedisKeys
 
@@ -124,7 +124,7 @@ async def register_account(username: str, email: str, password: str) -> str:
     user_id = await find_user_by_username(username)
     validate_email(email, check_deliverability=False)
     if user_id:
-        return user_id
+        raise InvalidUsage("Username already exists.")
 
     return await new_user(
         username=username,

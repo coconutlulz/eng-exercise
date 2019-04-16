@@ -2,7 +2,7 @@ import logging
 
 import aioredis
 import pytest
-from sanic.exceptions import Forbidden, MethodNotSupported, ServerError, Unauthorized
+from sanic.exceptions import Forbidden, InvalidUsage, MethodNotSupported, ServerError, Unauthorized
 import ujson
 
 import config
@@ -77,7 +77,7 @@ def test_methods(sanic_server):
     assert response.status == MethodNotSupported.status_code
 
 
-def _register(server):
+def _register(server, expected_status=200):
     location = "/register"
     username = "Some User"
     email = "definitely_a_real_email_address@fakeho.st"
@@ -94,7 +94,7 @@ def _register(server):
         data=ujson.dumps(attributes)
     )
 
-    assert response.status == 200
+    assert response.status == expected_status
     user_id = response.json["user_id"]
     assert isinstance(user_id, str)
     return user_id, password
@@ -208,3 +208,12 @@ def test_full_flow(sanic_server):
 
     response = _login(sanic_server, user_id, password)
     assert response.status == Forbidden.status_code
+
+
+def test_duplicate_username(sanic_server):
+    _register(sanic_server)
+
+    # TypeError expected if the request fails.
+    # If the status code is not 400, an AssertionError will be raised instead and the test will fail.
+    with pytest.raises(TypeError):
+        _register(sanic_server, expected_status=InvalidUsage.status_code)
