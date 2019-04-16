@@ -21,6 +21,7 @@ async def server_init(application, _):
         encoding="utf-8"
     )
     controller.db = application.redis
+    return application
 
 
 @app.route("/register", methods=["POST"])

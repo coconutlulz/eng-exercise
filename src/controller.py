@@ -6,7 +6,7 @@ from email_validator import validate_email
 from passlib.context import CryptContext
 from sanic.exceptions import NotFound, Unauthorized
 
-from models import Prefixes
+from models import Prefixes, RedisKeys
 
 # TYPE HINTING #
 import typing
@@ -21,7 +21,7 @@ async def check_auth(req: request) -> typing.Tuple[str, str]:
     session_id = req.headers["session_id"]
     logging.info("Checking auth for session_id: {}".format(session_id))
 
-    user_id = await db.get("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id))
+    user_id = await db.get(RedisKeys.session_user_id(session_id))
     logging.info("Got user_id: {}, session_id: {}".format(user_id, session_id))
 
     if user_id is None:
@@ -46,10 +46,12 @@ async def new_user(username: str, email: str, password: str) -> str:
     hashed_pw = await process_password(password)
     user_id = uuid.uuid4().hex
     p = db.multi_exec()
-    p.set("{}:{}".format(username, Prefixes.user_id), user_id)
-    p.set("{}:{}".format(user_id, Prefixes.username), username)
-    p.set("{}:{}".format(user_id, Prefixes.email), email)
-    p.set("{}:{}".format(user_id, Prefixes.password), hashed_pw)
+
+    p.set(RedisKeys.username(user_id), username)
+    p.set(RedisKeys.username_user_id(username), user_id)
+    p.set(RedisKeys.email(user_id), email)
+    p.set(RedisKeys.password(user_id), hashed_pw)
+
     result = await p.execute()
 
     logging.debug("Result for new user creation: {}".format(result))
@@ -61,11 +63,11 @@ async def new_user(username: str, email: str, password: str) -> str:
 
 
 async def find_user_by_user_id(user_id: str) -> str:
-    return await db.get("{}:{}".format(user_id, Prefixes.username))
+    return await db.get(RedisKeys.username(user_id))
 
 
 async def find_user_by_username(username: str) -> str:
-    return await db.get("{}:{}".format(username, Prefixes.user_id))
+    return await db.get(RedisKeys.username_user_id(username))
 
 
 async def process_password(password: str) -> str:
@@ -73,7 +75,7 @@ async def process_password(password: str) -> str:
 
 
 async def check_password(user_id: str, password: str) -> bool:
-    hash_string = await db.get("{}:{}".format(user_id, Prefixes.password))
+    hash_string = await db.get(RedisKeys.password(user_id))
     pw_hash = bytes(password, encoding="utf-8")
 
     return pwd_context.verify(
@@ -125,8 +127,7 @@ async def register_account(username: str, email: str, password: str) -> str:
 async def logout(*args: tuple, **kwargs: dict) -> None:
     session_id, user_id = kwargs["session_id"], kwargs["user_id"]
     p = db.multi_exec()
-    p.delete("{}:{}".format(user_id, Prefixes.session_id))  # logout
-    p.delete("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id))  # logout
+    p.unlink(RedisKeys.session_id(user_id), RedisKeys.session_user_id(session_id))
     await p.execute()
 
 
@@ -135,13 +136,17 @@ async def delete_user(*args: tuple, **kwargs: dict) -> None:
     session_id, user_id = kwargs["session_id"], kwargs["user_id"]
 
     p = db.multi_exec()
-    username = p.get("{}:{}".format(user_id, Prefixes.username))
-    p.delete("{}:{}".format(user_id, Prefixes.session_id))  # logout
-    p.delete("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id)) # logout
-    p.delete("{}:{}".format(username, Prefixes.user_id))
-    p.delete("{}:{}".format(user_id, Prefixes.username))
-    p.delete("{}:{}".format(user_id, Prefixes.email))
-    p.delete("{}:{}".format(user_id, Prefixes.password))
+
+    username = p.get(RedisKeys.username(user_id))
+    p.unlink(
+        RedisKeys.session_id(user_id),
+        RedisKeys.session_user_id(session_id),
+        RedisKeys.username_user_id(username),
+        RedisKeys.username(user_id),
+        RedisKeys.email(user_id),
+        RedisKeys.password(user_id)
+    )
+
     await p.execute()
 
 
@@ -149,31 +154,39 @@ async def delete_user(*args: tuple, **kwargs: dict) -> None:
 async def update_user(req: request, *args: tuple, **kwargs: dict) -> typing.Dict[str, str]:
     user_id = kwargs["user_id"]
     attrs_to_update = set(dir(Prefixes)).intersection(req.json)
+
     try:
         attrs_to_update.remove(Prefixes.session_id)
     except KeyError:
         pass
 
     p = db.multi_exec()
+
     if Prefixes.username in attrs_to_update:
-        username = p.get("{}:{}".format(Prefixes.user_id, Prefixes.user_id), user_id)
-        p.set("{}:{}".format(username, Prefixes.user_id), user_id)
+        username = p.get(RedisKeys.username(user_id))
+        p.set(RedisKeys.username_user_id(username), user_id)
 
     for attr in attrs_to_update:
         attr_val = Prefixes.lookup(attr)
         p.set("{}:{}".format(user_id, attr_val), req.json[attr])
+
     await p.execute()
+
     return await get_user(req, *args, **kwargs)
 
 
 @authorised()
 async def get_user(req: request, *args: tuple, **kwargs: dict) -> typing.Dict[str, str]:
     user_id = kwargs["user_id"]
+
     p = db.multi_exec()
-    p.get("{}:{}".format(user_id, Prefixes.username))
-    p.get("{}:{}".format(user_id, Prefixes.email))
-    p.get("{}:{}".format(user_id, Prefixes.password))
+
+    p.get(RedisKeys.username(user_id))
+    p.get(RedisKeys.email(user_id))
+    p.get(RedisKeys.password(user_id))
+
     username, email, password = await p.execute()
+
     return {
         "user_id": user_id,
         "username": username,

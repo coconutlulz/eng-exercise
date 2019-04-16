@@ -1,6 +1,6 @@
 sanic
+pytest-sanic
 email_validator
 argon2_cffi
 passlib==1.7.1
-redis-astra==2.0.0
 aioredis
