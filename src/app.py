@@ -1,4 +1,5 @@
 import aioredis
+import logging
 
 from sanic import Sanic, response
 
@@ -14,7 +15,11 @@ app = Sanic(__name__)
 
 @app.listener("before_server_start")
 async def server_init(application, _):
-    application.redis = await aioredis.create_redis("redis://127.0.0.1", encoding="utf-8")
+    logging.basicConfig(level=config.LOG_LEVEL)
+    application.redis = await aioredis.create_redis(
+        "redis://{}:{}".format(application.config.DB_HOST, application.config.DB_PORT),
+        encoding="utf-8"
+    )
     controller.db = application.redis
 
 
@@ -50,18 +55,20 @@ async def update(req: request) -> response.HTTPResponse:
 
 @app.route("/delete", methods=["DELETE"])
 async def delete(req: request) -> response.HTTPResponse:
+    await controller.delete_user(req)
     return response.json(
         body={
-            "msg": await controller.delete_user(req)
+            "msg": "deleted"
         }
     )
 
 
 @app.route("/logout", methods=["DELETE"])
 async def logout(req: request) -> response.HTTPResponse:
+    await controller.logout(req)
     return response.json(
         body={
-            "msg": await controller.logout(req)
+            "msg": "logged out"
         }
     )
 
