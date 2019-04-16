@@ -1,6 +1,6 @@
-sanic
-pytest-sanic
-email_validator
-argon2_cffi
+sanic==19.3.1
+pytest-sanic==1.0.0
+email-validator==1.0.3
+argon2_cffi==19.1.0
 passlib==1.7.1
-aioredis
+aioredis==1.2.0
