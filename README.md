@@ -31,7 +31,7 @@ Traditional database models are not used here. Initially, I tried to find a Redi
 
 
 ## Running
-> docker-compose -f docker-compose.yml up -d
+> $ docker-compose -f docker-compose.yml up -d
 
 The API should be available at `127.0.0.1:9443`.
 
@@ -50,3 +50,4 @@ Functionality in the acceptance tests is not separated out, in order to allow th
 * HTTPS/TLS is not enabled by default.
 * Flow should be updated to use sanic's `token` attribute on requests and responses.
 * There is no test coverage for multiple users and/or concurrency.
+* More logging is required.
