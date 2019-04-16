@@ -25,10 +25,13 @@ An asynchronous Redis library. sanic is async, so it made sense to minimise the 
 
 ## Design
 
+Python 3 is the language of choice. While it is the first version of Python that I learnt (in 2009), most of my career has been in Python 2. This was a good opportunity to brush up on the later version, as 2.x is approaching end-of-life.
+
 Redis was chosen as the database as I am familiar with it, it is simple to use and it is extremely fast. I had initially attempted to use DynamoDB, but found that I was spending too much time trying to learn its intricacies. Redis, in contrast, is trivial to set up and start using.
 
 Traditional database models are not used here. Initially, I tried to find a Redis ORM (similar to the one that we had created in Digit Game Studios), but none met my expectations. One potential candidate was *astra*. For the sake of simplicity, I reverted to using manual Redis commands.
 
+A Dockerfile and docker-compose.yml are included as a basis for containerisation, should the server ever need to be deployed via AWS or similar provider.
 
 ## Running
 > $ docker-compose -f docker-compose.yml up -d
