@@ -43,8 +43,15 @@ async def register(request):
 async def login(request):
     return response.json(
         body={
-            "msg": await controller.login_user(request.json["username"], request.json["password"])
+            "session_id": await controller.login_user(request.json["user_id"], request.json["password"])
         }
+    )
+
+
+@app.route("/update", methods=["PATCH"])
+async def update(request):
+    return response.json(
+        body=await controller.update_user(request)
     )
 
 

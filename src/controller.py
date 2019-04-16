@@ -13,9 +13,8 @@ db = None
 
 
 async def check_auth(request):
-    user_id = request.json["user_id"]
     session_id = request.headers["session_id"]
-    assert session_id == await db.get("{}:{}".format(user_id, Prefixes.session_id))
+    user_id = await db.get("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id))
     return user_id, session_id
 
 
@@ -48,10 +47,13 @@ async def new_user(username, email, password):
     return user_id
 
 
-async def find_user(username, user_id=None):
+async def find_user_by_user_id(user_id):
+    result = await db.get("{}:{}".format(user_id, Prefixes.username))
+    return result
+
+
+async def find_user_by_username(username):
     result = await db.get("{}:{}".format(username, Prefixes.user_id))
-    if user_id is not None:
-        return user_id
     return result
 
 
@@ -67,12 +69,12 @@ async def check_password(user_id, password):
     )
 
 
-async def login_user(username, password):
-    user_id = await find_user(username)
-    if user_id is None:
+async def login_user(user_id, password):
+    username = await find_user_by_user_id(user_id)
+    password = await check_password(user_id, password)
+    if username is None:
         raise NotFound()
 
-    password = await check_password(user_id, password)
     if not password:
         raise Unauthorized("Invalid password.")
 
@@ -80,7 +82,10 @@ async def login_user(username, password):
         uuid.UUID(version=4, hex=user_id),
         username
     ).hex
-    await db.set("{}:{}".format(user_id, Prefixes.session_id), session_id)
+    p = db.multi_exec()
+    p.set("{}:{}".format(user_id, Prefixes.session_id), session_id)
+    p.set("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id), user_id)
+    r = await p.execute()
     return session_id
 
 
@@ -89,11 +94,10 @@ async def register_account(username, email, password):
         "{}, {}, {}".format(username, email, password)  # TODO: REMOVE PASSWORD
     )
 
-    user_id = await find_user(username)
+    user_id = await find_user_by_username(username)
+    validate_email(email, check_deliverability=False)
     if user_id:
         return user_id
-
-    validate_email(email, check_deliverability=False)
 
     return await new_user(
         username=username,
@@ -105,7 +109,10 @@ async def register_account(username, email, password):
 @authorised()
 async def logout(*args, **kwargs):
     session_id, user_id = kwargs["session_id"], kwargs["user_id"]
-    db.delete("{}:{}".format(user_id, Prefixes.session_id))  # logout
+    p = db.multi_exec()
+    p.delete("{}:{}".format(user_id, Prefixes.session_id))  # logout
+    p.delete("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id))  # logout
+    await p.execute()
 
 
 @authorised()
@@ -115,8 +122,46 @@ async def delete_user(*args, **kwargs):
     p = db.multi_exec()
     username = p.get("{}:{}".format(user_id, Prefixes.username))
     p.delete("{}:{}".format(user_id, Prefixes.session_id))  # logout
+    p.delete("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id)) # logout
     p.delete("{}:{}".format(username, Prefixes.user_id))
     p.delete("{}:{}".format(user_id, Prefixes.username))
     p.delete("{}:{}".format(user_id, Prefixes.email))
     p.delete("{}:{}".format(user_id, Prefixes.password))
     await p.execute()
+
+
+@authorised()
+async def update_user(request, *args, **kwargs):
+    user_id = kwargs["user_id"]
+    attrs_to_update = set(dir(Prefixes)).intersection(request.json)
+    try:
+        attrs_to_update.remove(Prefixes.session_id)
+    except KeyError:
+        pass
+
+    p = db.multi_exec()
+    if Prefixes.username in attrs_to_update:
+        username = p.get("{}:{}".format(Prefixes.user_id, Prefixes.user_id), user_id)
+        p.set("{}:{}".format(username, Prefixes.user_id), user_id)
+
+    for attr in attrs_to_update:
+        attr_val = Prefixes.__dict__[attr]
+        p.set("{}:{}".format(user_id, attr_val), request.json[attr])
+    await p.execute()
+    return await get_user(request, *args, **kwargs)
+
+
+@authorised()
+async def get_user(request, *args, **kwargs):
+    user_id = kwargs["user_id"]
+    p = db.multi_exec()
+    p.get("{}:{}".format(user_id, Prefixes.username))
+    p.get("{}:{}".format(user_id, Prefixes.email))
+    p.get("{}:{}".format(user_id, Prefixes.password))
+    username, email, password = await p.execute()
+    return {
+        "user_id": user_id,
+        "username": username,
+        "email": email,
+        "password": password
+    }
