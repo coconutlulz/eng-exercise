@@ -2,14 +2,13 @@ import logging
 
 import aioredis
 import pytest
+from sanic.exceptions import MethodNotSupported, NotFound, ServerError
 
 from src import config, controller
 from src.app import app as test_app
 
 from tests import TEST_DB
 
-
-from sanic.exceptions import MethodNotSupported
 
 @pytest.yield_fixture
 def app():
@@ -33,32 +32,45 @@ def sanic_server(loop, app, test_server):
 
 
 def test_methods(sanic_server):
-    # POST
-    _, response = sanic_server.app.test_client.patch(
-        "/register"
-    )
+    location = "/user"  # GET
+
+    _, response = sanic_server.app.test_client.get(location)
+    assert response.status == ServerError.status_code
+
+    _, response = sanic_server.app.test_client.post(location)
     assert response.status == MethodNotSupported.status_code
 
-    # PUT
-    _, response = sanic_server.app.test_client.post(
-        "/login"
-    )
+    location = "/register"  # POST
+    _, response = sanic_server.app.test_client.post(location)
+    assert response.status == ServerError.status_code
+
+    _, response = sanic_server.app.test_client.patch(location)
     assert response.status == MethodNotSupported.status_code
 
-    # PATCH
-    _, response = sanic_server.app.test_client.put(
-        "/update"
-    )
+    location = "/login"  # PUT
+    _, response = sanic_server.app.test_client.put(location)
+    assert response.status == ServerError.status_code
+
+    _, response = sanic_server.app.test_client.post(location)
     assert response.status == MethodNotSupported.status_code
 
-    # DELETE
-    _, response = sanic_server.app.test_client.post(
-        "/delete"
-    )
+    location = "/update"  # PATCH
+    _, response = sanic_server.app.test_client.patch(location)
+    assert response.status == ServerError.status_code
+
+    _, response = sanic_server.app.test_client.put(location)
     assert response.status == MethodNotSupported.status_code
 
-    # DELETE
-    _, response = sanic_server.app.test_client.post(
-        "/logout"
-    )
+    location = "/delete"  # DELETE
+    _, response = sanic_server.app.test_client.delete(location)
+    assert response.status == ServerError.status_code
+
+    _, response = sanic_server.app.test_client.post(location)
+    assert response.status == MethodNotSupported.status_code
+
+    location = "/logout"  # DELETE
+    _, response = sanic_server.app.test_client.delete(location)
+    assert response.status == ServerError.status_code
+
+    _, response = sanic_server.app.test_client.post(location)
     assert response.status == MethodNotSupported.status_code
