@@ -74,14 +74,18 @@ async def process_password(password: str) -> str:
     return pwd_context.hash(bytes(password, encoding="utf-8"))
 
 
-async def check_password(user_id: str, password: str) -> bool:
-    hash_string = await db.get(RedisKeys.password(user_id))
+async def _check_password(hash_string: str, password: str) -> bool:
     pw_hash = bytes(password, encoding="utf-8")
 
     return pwd_context.verify(
         pw_hash,
         bytes(hash_string, encoding="utf-8")
     )
+
+
+async def check_password(user_id: str, password: str) -> bool:
+    hash_string = await db.get(RedisKeys.password(user_id))
+    return await _check_password(hash_string, password)
 
 
 async def login_user(user_id: str, password: str) -> str:
