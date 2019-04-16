@@ -1,6 +1,6 @@
 # Fender Digital Platform Engineering Challenge
 
-I've used Djagno, flask, falcon and Pyramid before, so I didn't want to use any of them for this challenge. It's an opportunity to learn some new things.
+I've used Django, flask, falcon and Pyramid before, so I didn't want to use any of them for this challenge. It's an opportunity to learn some new things.
 
 **sanic**
 
