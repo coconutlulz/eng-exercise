@@ -57,6 +57,15 @@ async def delete(req: request) -> response.HTTPResponse:
     )
 
 
+@app.route("/logout", methods=["DELETE"])
+async def logout(req: request) -> response.HTTPResponse:
+    return response.json(
+        body={
+            "msg": await controller.logout(req)
+        }
+    )
+
+
 if __name__ == "__main__":
     app.config.DB_HOST = config.DB_HOST
     app.config.DB_PORT = config.DB_PORT
