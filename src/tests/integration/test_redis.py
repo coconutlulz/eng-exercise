@@ -4,8 +4,9 @@ import aioredis
 
 import pytest
 
-from src import config, controller, models
-from src.app import app as test_app
+import config
+import controller
+from app import app as test_app
 
 from tests import TEST_DB
 

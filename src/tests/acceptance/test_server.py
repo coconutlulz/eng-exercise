@@ -5,8 +5,9 @@ import pytest
 from sanic.exceptions import Forbidden, MethodNotSupported, ServerError
 import ujson
 
-from src import config, controller
-from src.app import app as test_app
+import config
+import controller
+from app import app as test_app
 
 from tests import TEST_DB
 
