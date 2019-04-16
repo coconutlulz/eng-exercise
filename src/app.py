@@ -26,12 +26,35 @@ async def server_init(application, _):
 
 @app.route("/user", methods=["GET"])
 async def user(req: request) -> response.HTTPResponse:
+    """
+    GET /user
+
+    Get user information. Requires a session ID.
+
+    Headers:
+        - session_id: str
+
+    Returns: None
+    """
     user_info = await controller.get_user(req)
     return response.json(user_info)
 
 
 @app.route("/register", methods=["POST"])
 async def register(req: request) -> response.HTTPResponse:
+    """
+    POST /register
+
+    Register a new account.
+
+    Params:
+        - username: str
+        - email: str
+        - password: str
+
+    Returns:
+        - user_id: str
+    """
     user_id = await controller.register_account(
         req.json["username"],
         req.json["email"],
@@ -46,6 +69,18 @@ async def register(req: request) -> response.HTTPResponse:
 
 @app.route("/login", methods=["PUT"])
 async def login(req: request) -> response.HTTPResponse:
+    """
+    PUT /login
+
+    Log in with a password.
+
+    Params:
+        - user_id: str
+        - password: str
+
+    Returns:
+        - session_id: str
+    """
     return response.json(
         body={
             "session_id": await controller.login_user(req.json["user_id"], req.json["password"])
@@ -55,6 +90,25 @@ async def login(req: request) -> response.HTTPResponse:
 
 @app.route("/update", methods=["PATCH"])
 async def update(req: request) -> response.HTTPResponse:
+    """
+    PATCH /update
+
+    Update a user's information. Partial data accepted.
+
+    Headers:
+        - session_id: str
+
+    Params:
+        - username: str (optional)
+        - email : str (optional)
+        - password: str (optional)
+
+    Returns:
+        - user_id: str
+        - username: str
+        - email: str
+        - password: str
+    """
     return response.json(
         body=await controller.update_user(req)
     )
@@ -62,6 +116,17 @@ async def update(req: request) -> response.HTTPResponse:
 
 @app.route("/delete", methods=["DELETE"])
 async def delete(req: request) -> response.HTTPResponse:
+    """
+    DELETE /delete
+
+    Remove a user's account.
+
+    Headers:
+        - session_id: str
+
+    Returns:
+        - "deleted": str
+    """
     await controller.delete_user(req)
     return response.json(
         body={
@@ -72,6 +137,17 @@ async def delete(req: request) -> response.HTTPResponse:
 
 @app.route("/logout", methods=["DELETE"])
 async def logout(req: request) -> response.HTTPResponse:
+    """
+    DELETE /logout
+
+    Remove the user's current session.
+
+    Headers:
+        - session_id: str
+
+    Returns:
+        - "logged out": str
+    """
     await controller.logout(req)
     return response.json(
         body={
