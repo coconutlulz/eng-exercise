@@ -35,6 +35,10 @@ Traditional database models are not used here. Initially, I tried to find a Redi
 
 The API should be available at `127.0.0.1:9443`.
 
+Alternatively:
+
+> $ bash create_virtualenv.sh && source env/bin/activate && python src/app.py
+
 ## Tests
 > $ pip install --upgrade -r requirements.txt && pytest
 
