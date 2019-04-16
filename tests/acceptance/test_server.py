@@ -2,7 +2,8 @@ import logging
 
 import aioredis
 import pytest
-from sanic.exceptions import MethodNotSupported, NotFound, ServerError
+from sanic.exceptions import MethodNotSupported, ServerError
+import ujson
 
 from src import config, controller
 from src.app import app as test_app
@@ -26,14 +27,13 @@ def sanic_server(loop, app, test_server):
         encoding="utf-8"
     ))
     logging.debug("Test server configured with Redis instance: {}".format(app.redis))
-    app.redis.flushdb()
+    loop.run_until_complete(app.redis.flushdb())
     controller.db = app.redis
     return loop.run_until_complete(test_server(app))
 
 
 def test_methods(sanic_server):
     location = "/user"  # GET
-
     _, response = sanic_server.app.test_client.get(location)
     assert response.status == ServerError.status_code
 
@@ -74,3 +74,20 @@ def test_methods(sanic_server):
 
     _, response = sanic_server.app.test_client.post(location)
     assert response.status == MethodNotSupported.status_code
+
+
+def test_user_registration(sanic_server):
+    location = "/register"
+    attributes = {
+        "username": "Some User",
+        "email": "definitely_a_real_email_address@fakeho.st",
+        "password": "!!!"
+    }
+
+    _, response = sanic_server.app.test_client.post(
+        location,
+        data=ujson.dumps(attributes)
+    )
+
+    assert response.status == 200
+    assert isinstance(response.json["user_id"], str)

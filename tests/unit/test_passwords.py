@@ -9,4 +9,4 @@ async def test_effective_salt():
 async def test_verification():
     pw = "some pasṡwórḊ"
     hashed = await process_password(pw)
-    assert _check_password(hashed, pw)
+    assert await _check_password(hashed, pw)

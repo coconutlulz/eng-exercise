@@ -25,7 +25,7 @@ async def server_init(application, _):
 
 
 @app.route("/user", methods=["GET"])
-async def logout(req: request) -> response.HTTPResponse:
+async def user(req: request) -> response.HTTPResponse:
     user_info = await controller.get_user(req)
     return response.json(user_info)
 
