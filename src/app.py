@@ -24,6 +24,12 @@ async def server_init(application, _):
     return application
 
 
+@app.route("/user", methods=["GET"])
+async def logout(req: request) -> response.HTTPResponse:
+    user_info = await controller.get_user(req)
+    return response.json(user_info)
+
+
 @app.route("/register", methods=["POST"])
 async def register(req: request) -> response.HTTPResponse:
     user_id = await controller.register_account(
