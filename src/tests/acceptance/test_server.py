@@ -2,7 +2,7 @@ import logging
 
 import aioredis
 import pytest
-from sanic.exceptions import Forbidden, MethodNotSupported, ServerError
+from sanic.exceptions import Forbidden, MethodNotSupported, ServerError, Unauthorized
 import ujson
 
 import config
@@ -130,6 +130,68 @@ def _delete(server, session_id):
     return response
 
 
+def _logout(server, session_id):
+    location = "/logout"
+
+    headers = {
+        "session_id": session_id
+    }
+
+    _, response = server.app.test_client.delete(
+        location,
+        headers=headers
+    )
+    return response
+
+
+def _update(server, session_id, **kwargs):
+    location = "/update"
+
+    headers = {
+        "session_id": session_id
+    }
+
+    params = ujson.dumps(kwargs)
+
+    _, response = server.app.test_client.patch(
+        location,
+        headers=headers,
+        data=params
+    )
+    return response
+
+
+def _user(server, user_id, session_id):
+    location = "/update"
+
+    headers = {
+        "session_id": session_id
+    }
+
+    _, response = server.app.test_client.patch(
+        location,
+        headers=headers,
+        data=ujson.dumps({
+            "user_id": user_id
+        })
+    )
+    return response
+
+
+def test_logout(sanic_server):
+    user_id, password = _register(sanic_server)
+    response = _login(sanic_server, user_id, password)
+    assert response.status == 200
+    session_id = response.json["session_id"]
+    assert isinstance(session_id, str)
+
+    assert _user(sanic_server, user_id, session_id).json["user_id"] == user_id
+
+    _logout(sanic_server, session_id)
+
+    assert _user(sanic_server, user_id, session_id).status == Unauthorized.status_code
+
+
 def test_full_flow(sanic_server):
     user_id, password = _register(sanic_server)
 
@@ -137,6 +199,10 @@ def test_full_flow(sanic_server):
     assert response.status == 200
     session_id = response.json["session_id"]
     assert isinstance(session_id, str)
+
+    new_username = "A Different Username"
+    response = _update(sanic_server, session_id, username=new_username)
+    assert response.json["username"] == new_username
 
     _delete(sanic_server, session_id)
 
