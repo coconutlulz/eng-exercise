@@ -8,12 +8,17 @@ from sanic.exceptions import NotFound, Unauthorized
 
 from models import Prefixes
 
+# TYPE HINTING #
+import typing
+from sanic import request
+#
+
 pwd_context = CryptContext(schemes=("argon2",))
 db = None
 
 
-async def check_auth(request):
-    session_id = request.headers["session_id"]
+async def check_auth(req: request) -> typing.Tuple[str, str]:
+    session_id = req.headers["session_id"]
     user_id = await db.get("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id))
     return user_id, session_id
 
@@ -34,7 +39,7 @@ def authorised():
     return decorator
 
 
-async def new_user(username, email, password):
+async def new_user(username: str, email: str, password: str) -> str:
     user_id = uuid.uuid4().hex
     p = db.multi_exec()
     p.set("{}:{}".format(username, Prefixes.user_id), user_id)
@@ -47,21 +52,21 @@ async def new_user(username, email, password):
     return user_id
 
 
-async def find_user_by_user_id(user_id):
+async def find_user_by_user_id(user_id: str) -> str:
     result = await db.get("{}:{}".format(user_id, Prefixes.username))
     return result
 
 
-async def find_user_by_username(username):
+async def find_user_by_username(username: str) -> str:
     result = await db.get("{}:{}".format(username, Prefixes.user_id))
     return result
 
 
-async def process_password(password):
+async def process_password(password: str) -> str:
     return pwd_context.hash(bytes(password, encoding="utf-8"))
 
 
-async def check_password(user_id, password):
+async def check_password(user_id: str, password: str) -> bool:
     hash_string = await db.get("{}:{}".format(user_id, Prefixes.password))
     return pwd_context.verify(
         bytes(password, encoding="utf-8"),
@@ -69,7 +74,7 @@ async def check_password(user_id, password):
     )
 
 
-async def login_user(user_id, password):
+async def login_user(user_id: str, password: str) -> str:
     username = await find_user_by_user_id(user_id)
     password = await check_password(user_id, password)
     if username is None:
@@ -85,11 +90,11 @@ async def login_user(user_id, password):
     p = db.multi_exec()
     p.set("{}:{}".format(user_id, Prefixes.session_id), session_id)
     p.set("{}:{}:{}".format(Prefixes.session_id, session_id, Prefixes.user_id), user_id)
-    r = await p.execute()
+    await p.execute()
     return session_id
 
 
-async def register_account(username, email, password):
+async def register_account(username: str, email: str, password: str) -> str:
     logging.info(
         "{}, {}, {}".format(username, email, password)  # TODO: REMOVE PASSWORD
     )
@@ -107,7 +112,7 @@ async def register_account(username, email, password):
 
 
 @authorised()
-async def logout(*args, **kwargs):
+async def logout(*args: tuple, **kwargs: dict) -> None:
     session_id, user_id = kwargs["session_id"], kwargs["user_id"]
     p = db.multi_exec()
     p.delete("{}:{}".format(user_id, Prefixes.session_id))  # logout
@@ -116,7 +121,7 @@ async def logout(*args, **kwargs):
 
 
 @authorised()
-async def delete_user(*args, **kwargs):
+async def delete_user(*args: tuple, **kwargs: dict) -> None:
     session_id, user_id = kwargs["session_id"], kwargs["user_id"]
 
     p = db.multi_exec()
@@ -131,9 +136,9 @@ async def delete_user(*args, **kwargs):
 
 
 @authorised()
-async def update_user(request, *args, **kwargs):
+async def update_user(req: request, *args: tuple, **kwargs: dict) -> typing.Dict[str, str]:
     user_id = kwargs["user_id"]
-    attrs_to_update = set(dir(Prefixes)).intersection(request.json)
+    attrs_to_update = set(dir(Prefixes)).intersection(req.json)
     try:
         attrs_to_update.remove(Prefixes.session_id)
     except KeyError:
@@ -146,13 +151,13 @@ async def update_user(request, *args, **kwargs):
 
     for attr in attrs_to_update:
         attr_val = Prefixes.__dict__[attr]
-        p.set("{}:{}".format(user_id, attr_val), request.json[attr])
+        p.set("{}:{}".format(user_id, attr_val), req.json[attr])
     await p.execute()
     return await get_user(request, *args, **kwargs)
 
 
 @authorised()
-async def get_user(request, *args, **kwargs):
+async def get_user(req: request, *args: tuple, **kwargs: dict) -> typing.Dict[str, str]:
     user_id = kwargs["user_id"]
     p = db.multi_exec()
     p.get("{}:{}".format(user_id, Prefixes.username))

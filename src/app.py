@@ -1,36 +1,29 @@
-import asyncio
-import uuid
-
 import aioredis
 
 from sanic import Sanic, response
-from sanic.exceptions import Unauthorized
 
 import config
 import controller
-import models
+
+# TYPE HINTING #
+from sanic import request
+#
 
 app = Sanic(__name__)
 
-# GET - get
-# POST - create
-# PUT - replace or create
-# PATCH - update
-# DELETE
-
 
 @app.listener("before_server_start")
-async def server_init(app, _):
-    app.redis = await aioredis.create_redis("redis://127.0.0.1", encoding="utf-8")
-    controller.db = app.redis
+async def server_init(application, _):
+    application.redis = await aioredis.create_redis("redis://127.0.0.1", encoding="utf-8")
+    controller.db = application.redis
 
 
 @app.route("/register", methods=["POST"])
-async def register(request):
+async def register(req: request) -> response.HTTPResponse:
     user_id = await controller.register_account(
-        request.json["username"],
-        request.json["email"],
-        request.json["password"]
+        req.json["username"],
+        req.json["email"],
+        req.json["password"]
     )
     return response.json(
         body={
@@ -40,26 +33,26 @@ async def register(request):
 
 
 @app.route("/login", methods=["PUT"])
-async def login(request):
+async def login(req: request) -> response.HTTPResponse:
     return response.json(
         body={
-            "session_id": await controller.login_user(request.json["user_id"], request.json["password"])
+            "session_id": await controller.login_user(req.json["user_id"], req.json["password"])
         }
     )
 
 
 @app.route("/update", methods=["PATCH"])
-async def update(request):
+async def update(req: request) -> response.HTTPResponse:
     return response.json(
-        body=await controller.update_user(request)
+        body=await controller.update_user(req)
     )
 
 
 @app.route("/delete", methods=["DELETE"])
-async def delete(request):
+async def delete(req: request) -> response.HTTPResponse:
     return response.json(
         body={
-            "msg": await controller.delete_user(request)
+            "msg": await controller.delete_user(req)
         }
     )
 
