@@ -4,7 +4,7 @@ import uuid
 
 from email_validator import validate_email
 from passlib.context import CryptContext
-from sanic.exceptions import NotFound, Unauthorized
+from sanic.exceptions import Forbidden, Unauthorized
 
 from models import Prefixes, RedisKeys
 
@@ -15,6 +15,11 @@ from sanic import request
 
 pwd_context = CryptContext(schemes=("argon2",))
 db = None
+
+
+def set_db(redis):
+    global db
+    db = redis
 
 
 async def check_auth(req: request) -> typing.Tuple[str, str]:
@@ -90,10 +95,11 @@ async def check_password(user_id: str, password: str) -> bool:
 
 async def login_user(user_id: str, password: str) -> str:
     username = await find_user_by_user_id(user_id)
-    password = await check_password(user_id, password)
 
     if username is None:
-        raise NotFound()
+        raise Forbidden("This user does not exist.")
+
+    password = await check_password(user_id, password)
 
     if not password:
         raise Unauthorized("Invalid password.")

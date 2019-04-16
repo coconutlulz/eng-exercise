@@ -27,5 +27,5 @@ def sanic_server(loop, app, test_server):
     ))
     logging.debug("Test server configured with Redis instance: {}".format(app.redis))
     app.redis.flushdb()
-    controller.db = app.redis
+    controller.set_db(app.redis)
     return loop.run_until_complete(test_server(app))

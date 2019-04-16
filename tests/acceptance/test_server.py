@@ -2,7 +2,7 @@ import logging
 
 import aioredis
 import pytest
-from sanic.exceptions import MethodNotSupported, ServerError
+from sanic.exceptions import Forbidden, MethodNotSupported, ServerError
 import ujson
 
 from src import config, controller
@@ -28,7 +28,7 @@ def sanic_server(loop, app, test_server):
     ))
     logging.debug("Test server configured with Redis instance: {}".format(app.redis))
     loop.run_until_complete(app.redis.flushdb())
-    controller.db = app.redis
+    controller.set_db(app.redis)
     return loop.run_until_complete(test_server(app))
 
 
@@ -76,18 +76,68 @@ def test_methods(sanic_server):
     assert response.status == MethodNotSupported.status_code
 
 
-def test_user_registration(sanic_server):
+def _register(server):
     location = "/register"
+    username = "Some User"
+    email = "definitely_a_real_email_address@fakeho.st"
+    password = "!!!ġ"
+
     attributes = {
-        "username": "Some User",
-        "email": "definitely_a_real_email_address@fakeho.st",
-        "password": "!!!"
+        "username": username,
+        "email": email,
+        "password": password
     }
 
-    _, response = sanic_server.app.test_client.post(
+    _, response = server.app.test_client.post(
         location,
         data=ujson.dumps(attributes)
     )
 
     assert response.status == 200
-    assert isinstance(response.json["user_id"], str)
+    user_id = response.json["user_id"]
+    assert isinstance(user_id, str)
+    return user_id, password
+
+
+def _login(server, user_id, password):
+    location = "/login"
+    attributes = {
+        "user_id": user_id,
+        "password": password
+    }
+
+    _, response = server.app.test_client.put(
+        location,
+        data=ujson.dumps(attributes)
+    )
+
+    return response
+
+
+def _delete(server, session_id):
+    location = "/delete"
+
+    headers = {
+        "session_id": session_id
+    }
+
+    _, response = server.app.test_client.delete(
+        location,
+        headers=headers
+    )
+    assert response.status == 200
+    return response
+
+
+def test_full_flow(sanic_server):
+    user_id, password = _register(sanic_server)
+
+    response = _login(sanic_server, user_id, password)
+    assert response.status == 200
+    session_id = response.json["session_id"]
+    assert isinstance(session_id, str)
+
+    _delete(sanic_server, session_id)
+
+    response = _login(sanic_server, user_id, password)
+    assert response.status == Forbidden.status_code
