@@ -48,3 +48,6 @@ Functionality in the acceptance tests is not separated out, in order to allow th
 * Some modules are named generically, which could interfere with installed packages/modules.
 * While transactions (MULTI/EXEC) are used, atomicity cannot be guaranteed.
 * In accordance with the principle of least privilege, JSON Patch is deliberately not used; the client should (in this circumstance) not have the power to dictate to the server how to process requests.
+* HTTPS/TLS is not enabled by default.
+* Flow should be updated to use sanic's `token` attribute on requests and responses.
+* There is no test coverage for multiple users and/or concurrency.
