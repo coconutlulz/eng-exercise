@@ -35,7 +35,7 @@ Traditional database models are not used here. Initially, I tried to find a Redi
 
 The API should be available at `127.0.0.1:9443`.
 
-##Tests
+## Tests
 > $ pip install --upgrade -r requirements.txt && pytest
 
 Functionality in the acceptance tests is not separated out, in order to allow the entire flow to be tested atomically and to avoid duplication. I would argue that such separation is unnecessary as a failure at any step in the process will break the entire functionality.
